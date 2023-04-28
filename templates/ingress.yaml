@@ -49,12 +49,28 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{- if .backend -}} {{ .backend.service.name }} {{- else -}} {{ $fullName }} {{- end -}}
+                {{- if .backend.service.name -}}
+                name:  {{ .backend.service.name }}
+                {{- else -}}  
+                name: {{ $fullName }} 
+                {{- end -}}
                 port:
-                  number: {{- if .backend -}} {{ .backend.service.port.number }} {{- else -}} {{ $svcPort }} {{- end -}}
+                  {{- if .backend -}}
+                  number:  {{ .backend.service.port.number }} 
+                  {{- else -}} 
+                  number: {{ $svcPort }} 
+                  {{- end -}}
               {{- else }}
-              serviceName: {{- if .backend -}} {{ .backend.service.name }} {{- else -}} {{ $fullName  }} {{- end -}}
-              servicePort: {{- if .backend -}} {{ .backend.service.port.number }} {{- else -}} {{ $svcPort }} {{- end -}}
+              {{- if .backend -}}
+              serviceName:  {{ .backend.service.name }} 
+              {{- else -}} 
+              serviceName: {{ $fullName  }} 
+              {{- end -}}
+              {{- if .backend -}}
+              servicePort:  {{ .backend.service.port.number }} 
+              {{- else -}} 
+              servicePort:  {{ $svcPort }} 
+              {{- end -}}
               {{- end }}
           {{- end }}
     {{- end }}
