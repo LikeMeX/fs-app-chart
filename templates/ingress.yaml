@@ -49,7 +49,7 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                {{- if .backend.service.name -}}
+                {{- if .backend -}}
                 name:  {{ .backend.service.name }}
                 {{- else -}}  
                 name: {{ $fullName }} 
