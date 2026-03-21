@@ -81,7 +81,7 @@ spec:
             - secretRef:
                 name: {{ $v.name }}
             {{- end }}
-            {{- if or .Values.secrets .Values.useSecretRef }}
+            {{- if .Values.secrets }}
             - secretRef:
                 name: {{ include "my-app.fullname" . }}
             {{- end }}
