@@ -76,6 +76,9 @@ resources:
   #   cpu: 100m
   #   memory: 128Mi
 
+migration:
+  enabled: false
+
 autoscaling:
   enabled: false
   minReplicas: 1

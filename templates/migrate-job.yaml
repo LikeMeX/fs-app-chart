@@ -1,0 +1,54 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "my-app.fullname" . }}-migrate
+  labels:
+    {{- include "my-app.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        {{- include "my-app.selectorLabels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "my-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - node_modules/.bin/typeorm
+            - migration:run
+            - -d
+            - dist/src/database/data-source.js
+          envFrom:
+            {{- range $v := .Values.external_secret_refs }}
+            - secretRef:
+                name: {{ $v.name }}
+            {{- end }}
+            {{- if .Values.secrets }}
+            - secretRef:
+                name: {{ include "my-app.fullname" . }}
+            {{- end }}
+            - configMapRef:
+                name: {{ include "my-app.fullname" . }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+{{- end }}
