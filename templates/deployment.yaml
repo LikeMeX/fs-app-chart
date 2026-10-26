@@ -30,42 +30,9 @@ spec:
       serviceAccountName: {{ include "my-app.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.cloudSqlProxy }}
-      {{- if .enabled }}
-      # Native sidecar: starts (and passes its startup probe) before the app, stops after it.
-      # Logs in to Postgres as the pod's Workload Identity service account; the app connects
-      # to 127.0.0.1:<port> with user "<gsa>@<project>.iam" and no password.
+      {{- if .Values.cloudSqlProxy.enabled }}
       initContainers:
-        - name: cloud-sql-proxy
-          image: {{ .image }}
-          restartPolicy: Always
-          args:
-            - --auto-iam-authn
-            - --private-ip
-            - --structured-logs
-            - --health-check
-            - --http-address=0.0.0.0
-            - --http-port=9090
-            - --port={{ .port }}
-            - {{ required "cloudSqlProxy.instance is required" .instance }}
-          startupProbe:
-            httpGet:
-              path: /startup
-              port: 9090
-            periodSeconds: 1
-            failureThreshold: 60
-          livenessProbe:
-            httpGet:
-              path: /liveness
-              port: 9090
-            periodSeconds: 10
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-          resources:
-            {{- toYaml .resources | nindent 12 }}
-      {{- end }}
+        {{- include "my-app.cloudSqlProxy" .Values.cloudSqlProxy | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -114,16 +81,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
           envFrom:
-            {{- range $v := .Values.external_secret_refs }}
-            - secretRef:
-                name: {{ $v.name }}
-            {{- end }}
-            {{- if .Values.secrets }}
-            - secretRef:
-                name: {{ include "my-app.fullname" . }}
-            {{- end }}
-            - configMapRef:
-                name: {{ include "my-app.fullname" . }}
+            {{- include "my-app.envFrom" . | trim | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
