@@ -92,6 +92,20 @@ autoscaling:
   #   scaleDown:
   #     stabilizationWindowSeconds: 300   # k8s default, kept explicit
 
+# Cloud SQL Auth Proxy sidecar for Postgres IAM login (Workload Identity, no password).
+# Point the app at 127.0.0.1:<port> and set its DB user to "<gsa-name>@<project>.iam".
+cloudSqlProxy:
+  enabled: false
+  instance: ''   # <project>:<region>:<instance>
+  image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.26.0
+  port: 5432
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
 nodeSelector: {}
 
 tolerations: []
