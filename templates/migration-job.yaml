@@ -1,0 +1,72 @@
+{{- with .Values.migration }}
+{{- if .enabled }}
+# DB migrations run before every install/upgrade, as their own identity: a Workload Identity GSA
+# that may change the schema, while the app's identity can only read and write rows. If the Job
+# fails, the release fails before any app pod is replaced.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "my-app.fullname" $ }}-migrator
+  labels:
+    {{- include "my-app.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+    iam.gke.io/gcp-service-account: {{ required "migration.gcpServiceAccount is required" .gcpServiceAccount }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "my-app.fullname" $ }}-migrate
+  labels:
+    {{- include "my-app.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "0"
+    # Kept until the next release so its logs can be read.
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ .activeDeadlineSeconds }}
+  template:
+    metadata:
+      # No app.kubernetes.io/name: the Service must not send traffic to this pod.
+      labels:
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: migration
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "my-app.fullname" $ }}-migrator
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.cloudSqlProxy.enabled }}
+      initContainers:
+        {{- include "my-app.cloudSqlProxy" $.Values.cloudSqlProxy | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command:
+            {{- toYaml (required "migration.command is required" .command) | nindent 12 }}
+          {{- with .env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          envFrom:
+            {{- include "my-app.envFrom" $ | trim | nindent 12 }}
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- end }}

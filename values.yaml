@@ -106,6 +106,22 @@ cloudSqlProxy:
     limits:
       memory: 128Mi
 
+# DB migrations as a pre-install/pre-upgrade Job (templates/migration-job.yaml), using the app's
+# image, env and Cloud SQL proxy, but its own KSA "<fullname>-migrator" bound to gcpServiceAccount.
+# Use env to point the DB user at that GSA's IAM DB user.
+migration:
+  enabled: false
+  gcpServiceAccount: ''   # <name>@<project>.iam.gserviceaccount.com
+  command: []             # e.g. [node, node_modules/typeorm/cli.js, migration:run, -d, dist/src/database/data-source.js]
+  env: []                 # e.g. [{name: DATABASE_USERNAME, value: <name>@<project>.iam}]
+  activeDeadlineSeconds: 540   # under the deploy's helm --timeout 600s
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
 nodeSelector: {}
 
 tolerations: []

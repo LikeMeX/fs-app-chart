@@ -60,3 +60,59 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Cloud SQL Auth Proxy as a native sidecar (an init container with restartPolicy Always): starts,
+and passes its startup probe, before the main container; stops after it. Logs in to Postgres as
+the pod's Workload Identity service account; the main container connects to 127.0.0.1:<port> with
+user "<gsa>@<project>.iam" and no password. Shared by the Deployment and the migration Job.
+Call with .Values.cloudSqlProxy.
+*/}}
+{{- define "my-app.cloudSqlProxy" -}}
+- name: cloud-sql-proxy
+  image: {{ .image }}
+  restartPolicy: Always
+  args:
+    - --auto-iam-authn
+    - --private-ip
+    - --structured-logs
+    - --health-check
+    - --http-address=0.0.0.0
+    - --http-port=9090
+    - --port={{ .port }}
+    - {{ required "cloudSqlProxy.instance is required" .instance }}
+  startupProbe:
+    httpGet:
+      path: /startup
+      port: 9090
+    periodSeconds: 1
+    failureThreshold: 60
+  livenessProbe:
+    httpGet:
+      path: /liveness
+      port: 9090
+    periodSeconds: 10
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+  resources:
+    {{- toYaml .resources | nindent 4 }}
+{{- end }}
+
+{{/*
+envFrom for the app container: external secrets, the chart's own secret, and the configmap the
+deploy workflow creates from env/.env.<environment>. Shared by the Deployment and the migration Job.
+*/}}
+{{- define "my-app.envFrom" -}}
+{{- range $v := .Values.external_secret_refs }}
+- secretRef:
+    name: {{ $v.name }}
+{{- end }}
+{{- if .Values.secrets }}
+- secretRef:
+    name: {{ include "my-app.fullname" . }}
+{{- end }}
+- configMapRef:
+    name: {{ include "my-app.fullname" . }}
+{{- end }}
