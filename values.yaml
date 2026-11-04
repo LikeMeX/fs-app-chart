@@ -4,6 +4,10 @@
 
 replicaCount: 1
 
+# Old ReplicaSets kept for `kubectl rollout undo`. k8s default is 10; each idle one
+# still costs ~9 kube-state-metrics series in Grafana Cloud.
+revisionHistoryLimit: 5
+
 labels:
   app: 'test'
   environment: 'dev'
