@@ -18,6 +18,11 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ''
 
+# Override the image ENTRYPOINT / CMD (e.g. a worker from the same image as its API).
+# Empty = image defaults.
+command: []
+args: []
+
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''
