@@ -121,6 +121,7 @@ cloudSqlProxy:
 migration:
   enabled: false
   gcpServiceAccount: ''   # <name>@<project>.iam.gserviceaccount.com
+  serviceAccountName: ''  # run as this existing KSA instead (no migrator KSA; gcpServiceAccount unused)
   command: []             # e.g. [node, node_modules/typeorm/cli.js, migration:run, -d, dist/src/database/data-source.js]
   env: []                 # e.g. [{name: DATABASE_USERNAME, value: <name>@<project>.iam}]
   activeDeadlineSeconds: 540   # under the deploy's helm --timeout 600s

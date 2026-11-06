@@ -3,6 +3,9 @@
 # DB migrations run before every install/upgrade, as their own identity: a Workload Identity GSA
 # that may change the schema, while the app's identity can only read and write rows. If the Job
 # fails, the release fails before any app pod is replaced.
+# With migration.serviceAccountName the Job runs as that existing KSA instead (for apps whose
+# own identity already owns the schema), and no migrator KSA is created.
+{{- if not .serviceAccountName }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -15,6 +18,7 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
     iam.gke.io/gcp-service-account: {{ required "migration.gcpServiceAccount is required" .gcpServiceAccount }}
 ---
+{{- end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -37,7 +41,7 @@ spec:
         app.kubernetes.io/component: migration
     spec:
       restartPolicy: Never
-      serviceAccountName: {{ include "my-app.fullname" $ }}-migrator
+      serviceAccountName: {{ .serviceAccountName | default (printf "%s-migrator" (include "my-app.fullname" $)) }}
       {{- with $.Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
